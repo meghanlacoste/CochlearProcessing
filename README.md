@@ -1,158 +1,265 @@
 # CochlearProcessing
-%% Enter file path here:
-filepath = '10.Single Male W- Low Chatter.m4a';
-newfilepath = '';
+function [y,Fs] = audioread(filename, range, datatype)
+%AUDIOREAD Read audio files
+%   [Y, FS]=AUDIOREAD(FILENAME) reads an audio file specified by the
+%   character vector or string scalar FILENAME, returning the sampled data
+%   in Y and the sample rate FS, in Hertz.
+%   
+%   [Y, FS]=AUDIOREAD(FILENAME, [START END]) returns only samples START 
+%   through END from each channel in the file.
+%   
+%   [Y, FS]=AUDIOREAD(FILENAME, DATATYPE) specifies the data type format of
+%   Y used to represent samples read from the file.
+%   If DATATYPE='double', Y contains double-precision normalized samples.
+%   If DATATYPE='native', Y contains samples in the native data type
+%   found in the file.  Interpretation of DATATYPE is case-insensitive and
+%   partial matching is supported.
+%   If omitted, DATATYPE='double'.  
+%   
+%   [Y, FS]=AUDIOREAD(FILENAME, [START END], DATATYPE);
+%
+%   Output Data Ranges
+%   Y is returned as an m-by-n matrix, where m is the number of audio 
+%   samples read and n is the number of audio channels in the file.
+%
+%   If you do not specify DATATYPE, or dataType is 'double', 
+%   then Y is of type double, and matrix elements are normalized values 
+%   between -1.0 and 1.0.
+%
+%   If DATATYPE is 'native', then Y may be one of several MATLAB 
+%   data types, depending on the file format and the BitsPerSample 
+%   of the input file:
+%   
+%    File Format      BitsPerSample  Data Type of Y     Data Range of Y
+%    ----------------------------------------------------------------------
+%    WAVE (.wav)            8           uint8             0 <= Y <= 255
+%                          16           int16        -32768 <= Y <= 32767
+%                          24           int32         -2^31 <= Y <= 2^31-1
+%                          32           int32         -2^31 <= Y <= 2^31-1
+%                          32           single         -1.0 <= Y <= +1.0
+%    ----------------------------------------------------------------------
+%    WAVE (.wav) (u-law)    8           int16        -32124 <= Y <= 32124
+%    ----------------------------------------------------------------------
+%    WAVE (.wav) (A-law)    8           int16        -32256 <= Y <= 32256
+%    ----------------------------------------------------------------------
+%    FLAC (.flac)           8           uint8             0 <= Y <= 255
+%                          16           int16        -32768 <= Y <= 32767
+%                          24           int32         -2^31 <= Y <= 2^31-1
+%    ----------------------------------------------------------------------
+%    MP3 (.mp3)            N/A          single         -1.0 <= Y <= +1.0
+%    MPEG-4(.m4a,.mp4)
+%    OGG (.ogg)
+%    ----------------------------------------------------------------------
+%
+%   Call audioinfo to learn the BitsPerSample of the file.
+%
+%   Note that where Y is single or double and the BitsPerSample is 
+%   32 or 64, values in Y might exceed +1.0 or -1.0.
+%
+%   See also AUDIOINFO, AUDIOWRITE
 
-%% Call Phase 1 processing function call
-[resampled_data, resampled_freq] = process_signal(filepath, newfilepath);
+%   Copyright 2012-2019 The MathWorks, Inc.
 
-%% Setup
-lcfs = [105,200,300,400,510,630,770,920,1075,1260,1480,1710,1990,2310,2675,3125,3650,4350,5250,6350];
-ucfs = [200,300,400,510,630,770,920,1080,1265,1480,1720,1990,2310,2690,3125,3675,4350,5250,6350,7995];
 
-base_size = size(resampled_data);
-duration = base_size(1)/resampled_freq;
-t = 0:(1/resampled_freq):duration;
-
-%% Task 5: function call for each filter
-filtered_signals = zeros(base_size(1), 20);
-for i=1:20
-    passband = [lcfs(i),ucfs(i)];
-    filtered_signals(:,i) = filter_data(passband, resampled_data);
+% Parse input arguments:
+if nargin > 0
+    filename = convertStringsToChars(filename);
 end
 
-%% Task 6
-%figure, plot(t(1,1:end-1), filtered_signals(:,1));
-xlabel('Time (s)');
-ylabel('Amplitude');
-title('Filtered Signal: 105 to 200 Passband');
-%figure, plot(t(1,1:end-1), filtered_signals(:,20));
-xlabel('Time (s)');
-ylabel('Amplitude');
-title('Filtered Signal: 6350 to 7995 Passband');
-
-%% Tasks 7&8: envelope extraction for each passband
-enveloped_signals = zeros(base_size(1), 20);
-for i=1:20
-    filtered_signals(:,i) = abs(filtered_signals(:,i));
-    enveloped_signals(:,i) = envelop_data(filtered_signals(:,i));
+if nargin > 1
+    range = convertStringsToChars(range);
 end
 
-%% Task 9
-%figure, plot(t(1,1:end-1), enveloped_signals(:,1));
-xlabel('Time (s)');
-ylabel('Amplitude');
-title('Enveloped Signal: 105 to 200 Passband');
-%figure, plot(t(1,1:end-1), enveloped_signals(:,20));
-xlabel('Time (s)');
-ylabel('Amplitude');
-title('Enveloped Signal: 6350 to 7995 Passband');
-
-%% Task 10
-cos_signals = zeros(base_size(1), 20);
-for i=1:20
-    cf = sqrt(lcfs(i) * ucfs(i))
-
-    %%soundsc(cos(cf*2*pi*t), cf);
-    %%a = cos(cf*2*pi*time(1,1:end));
-    cos_signals(:,i) = cos(cf*2*pi*t(1,1:end-1));
-    %%figure, plot(t(1,1:end-1), cos_signals(:,i))
+if nargin > 2
+    datatype = convertStringsToChars(datatype);
 end
 
-%% Task 11
-amp_mods = zeros(base_size(1), 20);
-for i=1:20
-    amp_mods(:,i) = cos_signals(:,i) .* enveloped_signals(:,i);
-    %figure, plot(t(1,1:end-1), amp_mods(:,i));
+narginchk(1, 3);
+
+if nargin < 2
+    range = [1 inf];
+    datatype = 'double';
+elseif nargin < 3 && ischar(range)
+    datatype = range;
+    range = [1 inf];
+elseif nargin < 3
+    datatype = 'double';
 end
 
-%% Task 12
-summed_signal = zeros(base_size(1), 1);
-for i=1:20
-    summed_signal(:, 1) = summed_signal(:, 1) + amp_mods(:, i);
-end
-abs_signal = zeros(base_size(1), 1);
-abs_signal(:,1) = abs(summed_signal(:,1));
-norm_val = max(abs_signal(:,1));
-summed_signal = summed_signal(:,1) ./ norm_val;
-soundsc(summed_signal, resampled_freq)
-%% Phase 1 processing function
-function [resampled_data, resampled_freq] = process_signal(filepath, newfilepath)
-    cos_freq = 1000;
-    resampled_freq = 16000;
+
+% Expand the path, using the matlab path if necessary
+filename = multimedia.internal.io.absolutePathForReading(...
+    filename, ...
+    'MATLAB:audiovideo:audioread:fileNotFound', ...
+    'MATLAB:audiovideo:audioread:filePermissionDenied');
+
+import multimedia.internal.audio.file.PluginManager;
+
+try
+    readPlugin = PluginManager.getInstance.getPluginForRead(filename);
+catch exception
+    % The exception has been fully formed. Only the prefix has to be
+    % replaced.
+    exception = PluginManager.replacePluginExceptionPrefix(exception, 'MATLAB:audiovideo:audioread');
     
-    %% 3.1: Read file stored at filepath into Matlab
-    [audiodata, rate] = audioread(filepath);
+    throw(exception);
+end
+
+try    
+    options.Filename = filename;
+    % Disable reading metadata tags from the file as they are not used
+    % during reading data. This can help improve performance, atleast on
+    % Linux.
+    options.ReadTags = false;
+    options.ReadDuration = false;
     
-    %% 3.2: Check if signal is stereo or mono; convert to mono if needed
-    sizevector = size(audiodata);
-    monodata = zeros(sizevector(1), 1);
-    if sizevector(2) == 2
-        for i=1:sizevector(1)
-            monodata(i) = audiodata(i,1) + audiodata(i,2);
+    % Create Channel object
+    channel = asyncio.Channel( ...
+        readPlugin,...
+        PluginManager.getInstance.MLConverter, ...
+        options, [0, 0]);
+    
+    channel.InputStream.addFilter( ...
+        PluginManager.getInstance.TransformFilter, ...
+        []);
+    
+    % Check if Duration is available
+    if (channel.Duration == -1)
+        channel.TotalSamples = channel.Duration;
+    end
+    
+    % Validate the datatype is correctly formed
+    datatype = validateDataType(datatype, channel);
+    
+    [startSample, samplesToRead] = validateRange(range, channel.TotalSamples);
+    
+    options.StartSample = startSample;
+    options.FrameSize = double(multimedia.internal.audio.file.FrameSize.Optimal); 
+    options.FilterTransformType = 'DeinterleaveTranspose';
+    options.FilterOutputDataType = datatype;
+    
+    channel.open(options);
+    c = onCleanup(@()channel.close()); % close when going out of scope
+    
+    % For certain MP3 files, 'Duration' is only available after reading
+    % till the end of file. The listener will listen to the event which
+    % signals the availibility of 'Duration'. See g1954687 for details.
+    
+    % Attach the duration listener
+    durationListener = event.listener(channel,'Custom', ...
+                                          @(src, event) computeTotalSamples(src,event));
+    cl = onCleanup(@() delete(durationListener)); % delete when going out of scope
+    
+    Fs = double(channel.SampleRate);
+    
+    % if we need to read till the end 
+    if isinf(samplesToRead)
+        y = [];
+        while (channel.TotalSamples < 0)
+            y = [y; channel.InputStream.read()]; %#ok<AGROW>
         end
+        % We need to validate the range in case both values in range are
+        % greater than the TotalSamples
+        validateRangeWithTotalSamples(range, channel.TotalSamples);
+        y = y(range(1):end,:);       
+        samplesToRead = (channel.TotalSamples - range(1)) + 1;
     else
-        monodata = audiodata;
+        y = channel.InputStream.read(samplesToRead);
     end
     
-    %% 3.3: Play the sound in Matlab
-    %sound(audiodata, rate);
-    
-    %% 3.4: Write the sound to a new file
-    %audiowrite(newfilepath, audiodata, rate);
-    
-    %% 3.5: Plot the sound waveform as a fct. of the sample number
-    %plot(monodata)
-
-    %% 3.6: Resample the signal to 16 kHz if necessary
-    if rate > resampled_freq
-        [p,q] = rat(resampled_freq/rate);
-        resampled_data = resample(monodata, p, q);
-    else
-        resampled_data = monodata;
+    % Generate a warning if the number of samples read is lesser than the
+    % number requested.
+    actNumSamplesRead = size(y, 1);
+    if actNumSamplesRead < samplesToRead
+        while (channel.TotalSamples < 0)
+            drawnow limitrate;
+        end
+        % Once TotalSamples is available, validate the range
+        validateRangeWithTotalSamples(range, channel.TotalSamples);
+        stopSample = startSample + samplesToRead - 1;
+        if (startSample+1 ~= 1) || (stopSample+1 ~= channel.TotalSamples)
+            warning(message('MATLAB:audiovideo:audioread:incompleteRead', actNumSamplesRead));
+        end
     end
-    %%Resampled data is plotted here
-    %figure, plot(resampled_data);
-    xlabel('Frequency (Hz)');
-    ylabel('Amplitude');
-    title('Original Signal');
-
     
-    %% 3.7: Generate cosine signal, play sound, and plot 2 waveforms
-%     size_resampled = size(resampled_data);
-%     duration = size_resampled(1)/resampled_freq;
-%     t = 0:(1/size_resampled(1)):duration;
-%     
-%     soundsc(cos(cos_freq*2*pi*t), cos_freq);
-%     
-%     t_waveform = t(1:2/cos_freq*size_resampled(1));
-%     figure, plot(t_waveform, cos(cos_freq*2*pi*t_waveform))
+catch exception
+    exception = PluginManager.convertPluginException(exception, ...
+        'MATLAB:audiovideo:audioread');
+    
+    throw(exception);
 end
 
-%% Bandpass filter (Task 5)
-function [filtered_data] = filter_data(passband, data)
-    Fs = 16000;  % Sampling Frequency
-
-    N   = 10;    % Order
-    Fc1 = passband(1);   % First Cutoff Frequency
-    Fc2 = passband(2) ; % Second Cutoff Frequency
-
-    % Construct an FDESIGN object and call its BUTTER method.
-    h  = fdesign.bandpass('N,F3dB1,F3dB2', N, Fc1, Fc2, Fs);
-    Hd = design(h, 'butter');
-
-    filtered_data = filter(Hd, data);
 end
 
-%% Lowpass filter for enveloping (Task 8)
-function [enveloped_data] = envelop_data(x)
-    Fs = 16000;  % Sampling Frequency
+function datatype = validateDataType(datatype, channel)
 
-    N  = 10;   % Order
-    Fc = 400;  % Cutoff Frequency
+datatype = validatestring(datatype, {'double','native'},'audioread','datatype');
 
-    % Construct an FDESIGN object and call its BUTTER method.
-    h  = fdesign.lowpass('N,F3dB', N, Fc, Fs);
-    Hd = design(h, 'butter');
-    enveloped_data = filter(Hd, x);
+if strcmp(datatype,'native')
+    if ismember('BitsPerSample',properties(channel))
+        % Channel has a 'BitsPerSample' property and is most likely
+        % uncompressed or lossless.
+        % Set the 'native' data type to the underlying channel's
+        % datatype.
+        datatype = channel.DataType;
+    else
+        % Channel is most likely compressed. 'native' datatype
+        % should be single
+        datatype = 'single';
+    end
+else
+    datatype = 'double';
+end
+
+end
+
+
+
+function [startSample, samplesToRead] = validateRange(range, totalSamples)
+
+validateattributes( ...
+    range,{'double'}, ...
+    {'positive','nonempty','nonnan','ncols',2,'nrows',1}',...
+    'audioread','range',2);
+
+if totalSamples >= 0
+    range = validateRangeWithTotalSamples(range, totalSamples);
+else
+    % sample ranges are zero based. Get the correct startSample
+    range = range - 1;
+end
+  
+% Validate that start of range is less than the end of range
+if (range(1) > range(2))
+    error(message('MATLAB:audiovideo:audioread:invalidrange'));
+end
+
+startSample = range(1);
+samplesToRead = (range(2) - startSample) + 1;
+end
+
+function range = validateRangeWithTotalSamples(range, totalSamples)
+% replace any Inf values with total samples
+range(range == Inf) = totalSamples;
+
+if any(range > totalSamples)
+    error(message('MATLAB:audiovideo:audioread:endoffile', totalSamples));
+end
+
+
+range = range - 1; % sample ranges are zero based
+range = max(range, 0); % bound the range by zero
+
+% Validate that all values are integers
+validateattributes( ...
+    range,{'numeric'}, ...
+    {'integer'},...
+    'audioread','range',2);
+end
+
+
+function computeTotalSamples(src,event)
+if event.Type == "FileDurationEvent"
+    src.TotalSamples = floor(src.SampleRate * event.Data.Duration);
+end
 end
