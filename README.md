@@ -14,7 +14,7 @@ base_size = size(resampled_data);
 duration = base_size(1)/resampled_freq;
 t = 0:(1/resampled_freq):duration;
 
-% Task 5: function call for each filter
+%Task 5: function call for each filter
 filtered_signals = zeros(base_size(1), 20);
 for i=1:20
     passband = [lcfs(i),ucfs(i)];
