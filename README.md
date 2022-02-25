@@ -67,15 +67,16 @@ for i=1:20
 end
 
 % Task 12
-summed_signal = zeros(base_size(1), 1);
-for i=1:20
-    summed_signal(:, 1) = summed_signal(:, 1) + amp_mods(:, i);
-end
-abs_signal = zeros(base_size(1), 1);
-abs_signal(:,1) = abs(summed_signal(:,1));
-norm_val = max(abs_signal(:,1));
-summed_signal = summed_signal(:,1) ./ norm_val;
-soundsc(summed_signal, resampled_freq)
+    summed_signal = zeros(base_size(1), 1);
+    for i=1:20
+        summed_signal(:, 1) = summed_signal(:, 1) + amp_mods(:, i);
+    end
+    abs_signal = zeros(base_size(1), 1);
+    abs_signal(:,1) = abs(summed_signal(:,1));
+    norm_val = max(abs_signal(:,1));
+    summed_signal = summed_signal(:,1) ./ norm_val;
+    soundsc(summed_signal, resampled_freq)
+
 % Phase 1 processing function
 function [resampled_data, resampled_freq] = process_signal(filepath, newfilepath)
     cos_freq = 1000;
